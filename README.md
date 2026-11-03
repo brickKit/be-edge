@@ -40,6 +40,10 @@ Optional: `featuresPath` (`/api/features`), `logoutPath` (`/api/iam/logout`), `r
 
 ## Tests
 
+`make check` runs the formatting check, vet and the three runs below that need no Docker; `make traefik` the
+container one.
+
+
 - `go test ./...` and, under Traefik's interpreter, `yaegi test .` (Yaegi v0.16.1, what Traefik v3.0.4 embeds): the
   handler with a fake identity member, the wire messages.
 - `cd tests && go test ./...`: the protocol's `edge-flow` vectors through the plugin's entry, over gRPC and mTLS to a
