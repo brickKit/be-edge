@@ -14,7 +14,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -91,7 +90,8 @@ func New(_ context.Context, next http.Handler, cfg *Config, _ string) (http.Hand
 		go s.poll(context.Background(), every)
 	}
 	sharedMu.Unlock()
-	log.Printf("be-edge: middleware built (shared cache reused: %v)", ok)
+	// Traefik logs a plugin's standard error at ERR: only problems go there, this line goes to standard output
+	fmt.Fprintf(os.Stdout, "be-edge: middleware built (shared cache reused: %v)\n", ok)
 	return newHandler(next, cfg, s), nil
 }
 

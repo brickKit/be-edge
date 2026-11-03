@@ -2,7 +2,9 @@ package edge
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"os"
 	"sync"
 	"time"
 )
@@ -147,7 +149,7 @@ func (s *sessions) poll(ctx context.Context, every time.Duration) {
 			}
 			failing = true
 		} else if failing {
-			log.Printf("be-edge: the identity member's ended sessions are read again")
+			fmt.Fprintln(os.Stdout, "be-edge: the identity member's ended sessions are read again")
 			failing = false
 		}
 		select {
