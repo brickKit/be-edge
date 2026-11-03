@@ -1,0 +1,12 @@
+displayName: BrickEnterprise edge session
+type: middleware
+import: github.com/brickKit/be-edge/v3
+basePkg: edge # the import path ends in the major version; the package is edge
+summary: Per-session access tokens injected into browser requests, one replay on TOKEN_STALE, the BE-Request header for state-changing requests, features for logged-in sessions (be-protocol chapter 11)
+testData:
+  identityAddress: be-iam-casdoor:9200
+  identityComponent: infra/iam-casdoor
+  deployment: 0190f3a1-0000-7000-8000-00000000d001
+  certFile: /certs/edge.cert.pem
+  keyFile: /certs/edge.key.pem
+  caFile: /certs/ca.pem
