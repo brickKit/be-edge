@@ -8,10 +8,10 @@ github.com/Microsoft/go-winio v0.6.2 h1:F2VQgta7ecxGYO8k3ZZz3RS8fVIXVxONVUPlNERo
 github.com/Microsoft/go-winio v0.6.2/go.mod h1:yd8OoFMLzJbo9gZq8j5qaps8bJ9aShtEA8Ipt1oGCvU=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
-github.com/brickKit/be-protocol/v3 v3.0.0-alpha.116 h1:zUE6e1KU3dxDgnXNMSGSu0zj8eBZltd/r32pCFqyvU4=
-github.com/brickKit/be-protocol/v3 v3.0.0-alpha.116/go.mod h1:eqJQ6fzJYtWspmJADXfVuXlY4++EQbAyrZWeABZH7SA=
-github.com/brickKit/be-sdk-go/v3 v3.0.0-alpha.117 h1:XWyHH4YZRj+09Akpz+J80qtP81uVTASv9QK2J1wFXmQ=
-github.com/brickKit/be-sdk-go/v3 v3.0.0-alpha.117/go.mod h1:80hMsopxl3vRbelGANXkweiIFKVeBA6EpzrqYt06xPA=
+github.com/brickKit/be-protocol/v3 v3.0.0-alpha.117 h1:NycAyBSjQpKV67h9VqUFnM8yV78q3cQhBE4DVOTJmMg=
+github.com/brickKit/be-protocol/v3 v3.0.0-alpha.117/go.mod h1:eqJQ6fzJYtWspmJADXfVuXlY4++EQbAyrZWeABZH7SA=
+github.com/brickKit/be-sdk-go/v3 v3.0.0-alpha.119 h1:NpO1QkO8j8GQxCYlKvAeFCpX+y0qtEb+N6VQR1oyVe8=
+github.com/brickKit/be-sdk-go/v3 v3.0.0-alpha.119/go.mod h1:tTzcK3mdmXWDjlB4kXlHggKjVNdQchDqZ2GkS8iEZ8w=
 github.com/brickKit/contract-infra-authz/v3 v3.0.0-alpha.3 h1:Gdt8TtKoPEovg7lZ6kgXqhWZjuCLHYjMu8dfw3abI8s=
 github.com/brickKit/contract-infra-authz/v3 v3.0.0-alpha.3/go.mod h1:21N0lZKoL1STxtsx5Yi9Wh8cJ32gtsQuVF52oxMWaps=
 github.com/brickKit/infra-audit/contract/v3 v3.0.0-alpha.2 h1:0snoszyg1imd9WGsK7I2H0lGNM6CKDOoE06D2jn/4G4=

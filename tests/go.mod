@@ -4,8 +4,8 @@ go 1.27.0
 
 require (
 	github.com/brickKit/be-edge/v3 v3.0.0
-	github.com/brickKit/be-protocol/v3 v3.0.0-alpha.116
-	github.com/brickKit/be-sdk-go/v3 v3.0.0-alpha.117
+	github.com/brickKit/be-protocol/v3 v3.0.0-alpha.117
+	github.com/brickKit/be-sdk-go/v3 v3.0.0-alpha.119
 	github.com/stretchr/testify v1.12.1
 	google.golang.org/grpc v1.83.2
 )
