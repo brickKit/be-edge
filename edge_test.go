@@ -382,3 +382,66 @@ func TestTheWireMessages(t *testing.T) {
 		t.Error("a truncated field is malformed")
 	}
 }
+
+// cleared is the Set-Cookie that drops the session cookie (P11.12), or nil.
+func cleared(w *httptest.ResponseRecorder) *http.Cookie {
+	for _, c := range w.Result().Cookies() {
+		if c.Name == DefaultCookie && c.Value == "" && c.MaxAge < 0 {
+			return c
+		}
+	}
+	return nil
+}
+
+// P11.12: SESSION_ENDED to a request with the cookie clears it (Secure over HTTPS); other answers leave it alone.
+func TestAnEndedSessionClearsTheCookie(t *testing.T) {
+	id, _, h := setup(t)
+	id.refuse = errSessionEnded
+	w := serve(h, request("GET", "/api/x", "", "cookie-a"))
+	c := cleared(w)
+	if reasonOf(t, w) != "SESSION_ENDED" || c == nil {
+		t.Fatalf("ended: %s, cleared %v", reasonOf(t, w), c)
+	}
+	if c.Path != "/" || !c.HttpOnly || c.SameSite != http.SameSiteLaxMode || c.Secure {
+		t.Errorf("the clearing cookie over HTTP: %+v", c)
+	}
+	if c := cleared(serve(h, request("GET", "/api/x", "", "cookie-a", "X-Forwarded-Proto", "https"))); c == nil || !c.Secure {
+		t.Errorf("over HTTPS the clearing cookie is Secure: %+v", c)
+	}
+	if cleared(serve(h, request("GET", DefaultFeaturesPath, "", "cookie-a"))) == nil {
+		t.Error("features with an ended session clear the cookie (P11.8)")
+	}
+	if cleared(serve(h, request("GET", DefaultFeaturesPath, "", ""))) != nil {
+		t.Error("no cookie, nothing to clear")
+	}
+	id.refuse = errors.New("connection refused")
+	if w := serve(h, request("GET", "/api/x", "", "cookie-a")); w.Code != 503 || cleared(w) != nil {
+		t.Errorf("an unavailable identity member keeps the session: %d, cleared %v", w.Code, cleared(w))
+	}
+}
+
+// P11.13: the identity member's login and callback pass with an ended cookie, as without one.
+func TestLoginAndCallbackPassWithAnEndedCookie(t *testing.T) {
+	id, c, h := setup(t)
+	id.refuse = errSessionEnded
+	for _, p := range []string{DefaultLoginPath, DefaultCallbackPath} {
+		w := serve(h, request("GET", p+"?return_to=%2Fx", "", "cookie-a", "Authorization", "Bearer forged"))
+		if w.Code != 200 {
+			t.Errorf("%s: %d %s", p, w.Code, reasonOf(t, w))
+		}
+	}
+	if id.count() != 0 {
+		t.Errorf("no exchange for the login and the callback, got %d", id.count())
+	}
+	if c.calls() != 2 {
+		t.Fatalf("both reached the identity member: %d", c.calls())
+	}
+	for _, r := range c.got {
+		if a := r.Header.Get("Authorization"); a != "" {
+			t.Errorf("no token and no browser Authorization injected: %q", a)
+		}
+	}
+	if w := serve(h, request("GET", DefaultLoginPath+"/x", "", "cookie-a")); reasonOf(t, w) != "SESSION_ENDED" {
+		t.Errorf("only the exact paths are public: %s", reasonOf(t, w))
+	}
+}

@@ -37,6 +37,9 @@ type Config struct {
 	FeaturesPath string `json:"featuresPath,omitempty"`
 	// LogoutPath is the identity member's logout route: after it succeeds the session's token is dropped at once.
 	LogoutPath string `json:"logoutPath,omitempty"`
+	// PublicPaths are the identity member's login and callback routes, compared whole: they pass as without a
+	// session cookie (P11.13), so a cookie left after the session ended does not stop a new login.
+	PublicPaths []string `json:"publicPaths,omitempty"`
 	// ReplayLimit is B_replay in bytes; PollInterval is P_inv (a Go duration).
 	ReplayLimit  int64  `json:"replayLimit,omitempty"`
 	PollInterval string `json:"pollInterval,omitempty"`
@@ -50,12 +53,15 @@ const (
 	DefaultCookie       = "be_session"
 	DefaultFeaturesPath = "/api/features"
 	DefaultLogoutPath   = "/api/iam/logout"
+	DefaultLoginPath    = "/api/iam/login"
+	DefaultCallbackPath = "/api/iam/callback"
 )
 
 // CreateConfig returns the default configuration.
 func CreateConfig() *Config {
 	return &Config{ReplayLimit: DefaultReplayLimit, PollInterval: DefaultPollInterval, CookieName: DefaultCookie,
-		FeaturesPath: DefaultFeaturesPath, LogoutPath: DefaultLogoutPath}
+		FeaturesPath: DefaultFeaturesPath, LogoutPath: DefaultLogoutPath,
+		PublicPaths: []string{DefaultLoginPath, DefaultCallbackPath}}
 }
 
 // shared is one cache and one poller per identity member and certificate: every router's instance of the
@@ -116,6 +122,9 @@ func newHandler(next http.Handler, cfg *Config, s *sessions) *handler {
 	if c.LogoutPath == "" {
 		c.LogoutPath = DefaultLogoutPath
 	}
+	if len(c.PublicPaths) == 0 {
+		c.PublicPaths = []string{DefaultLoginPath, DefaultCallbackPath}
+	}
 	return &handler{next: next, cfg: c, sessions: s}
 }
 
@@ -139,7 +148,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.features(w, r, d)
 		return
 	}
-	if d == "" { // public routes, external callbacks: as they are
+	if d == "" || h.public(r.URL.Path) { // public routes, external callbacks, the login (P11.13): as they are
 		h.next.ServeHTTP(w, r)
 		return
 	}
@@ -150,7 +159,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	renew := r.Header.Get("BE-Polling") != "1"
 	tok, err := h.sessions.token(r.Context(), d, renew)
 	if err != nil {
-		h.refused(w, err)
+		h.refused(w, r, err)
 		return
 	}
 	body, replayable, err := buffer(r, h.cfg.ReplayLimit)
@@ -171,7 +180,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.sessions.drop(d)
 	tok, err = h.sessions.exchange(r.Context(), d, renew)
 	if err != nil {
-		h.refused(w, err)
+		h.refused(w, r, err)
 		return
 	}
 	if !replayable {
@@ -183,16 +192,36 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.next.ServeHTTP(again, with(r, body, tok))
 	if again.stale() {
 		h.sessions.drop(d)
-		problem(w, 401, "SESSION_ENDED", "The session has ended; log in again", nil)
+		h.ended(w, r)
 		return
 	}
 	again.release()
 }
 
+func (h *handler) public(path string) bool {
+	for _, p := range h.cfg.PublicPaths {
+		if path == p {
+			return true
+		}
+	}
+	return false
+}
+
+// ended answers SESSION_ENDED; a request that carried the session cookie gets it cleared (P11.12), Secure when the
+// request came over HTTPS, so the browser stops sending a cookie whose session is gone.
+func (h *handler) ended(w http.ResponseWriter, r *http.Request) {
+	if ck, err := r.Cookie(h.cfg.CookieName); err == nil && ck.Value != "" {
+		secure := r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+		http.SetCookie(w, &http.Cookie{Name: h.cfg.CookieName, Value: "", Path: "/", MaxAge: -1, HttpOnly: true,
+			Secure: secure, SameSite: http.SameSiteLaxMode})
+	}
+	problem(w, 401, "SESSION_ENDED", "The session has ended; log in again", nil)
+}
+
 // refused answers a failed exchange (P11.4).
-func (h *handler) refused(w http.ResponseWriter, err error) {
+func (h *handler) refused(w http.ResponseWriter, r *http.Request, err error) {
 	if err == errSessionEnded {
-		problem(w, 401, "SESSION_ENDED", "The session has ended; log in again", nil)
+		h.ended(w, r)
 		return
 	}
 	problem(w, 503, "DEPENDENCY_UNAVAILABLE", "The identity member cannot answer now; try again",
@@ -206,7 +235,7 @@ func (h *handler) features(w http.ResponseWriter, r *http.Request, d string) {
 		return
 	}
 	if _, err := h.sessions.token(r.Context(), d, r.Header.Get("BE-Polling") != "1"); err != nil {
-		h.refused(w, err)
+		h.refused(w, r, err)
 		return
 	}
 	b, err := os.ReadFile(h.cfg.FeaturesFile)

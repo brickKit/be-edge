@@ -1,10 +1,12 @@
 # be-edge
 
-The edge's session layer of BrickEnterprise (be-protocol chapter 11, rules P11.1–P11.10). For a browser request with
+The edge's session layer of BrickEnterprise (be-protocol chapter 11, rules P11.1–P11.13). For a browser request with
 the session cookie it injects the session's short access token, exchanged from the identity member's standard system
 method `be.session.v1.SessionService` and cached per session; it replays the request once when the entry component
 answers `TOKEN_STALE`; state-changing requests with the cookie need `BE-Request: 1`; `features` goes to live sessions
-only; every edge instance pulls the ended sessions by cursor. It does not verify tokens or decide authorization:
+only; every edge instance pulls the ended sessions by cursor. Answering `SESSION_ENDED` it clears the session cookie,
+and the identity member's login and callback pass as without a cookie, so a cookie left after the session ended does
+not stop a new login. It does not verify tokens or decide authorization:
 every component does that itself.
 
 - The package at the root is a Traefik middleware plugin (Yaegi): standard library only, gRPC framed by hand.
@@ -35,7 +37,8 @@ http:
           featuresFile: /features/features.json
 ```
 
-Optional: `featuresPath` (`/api/features`), `logoutPath` (`/api/iam/logout`), `replayLimit` (B_replay, 1 MiB),
+Optional: `featuresPath` (`/api/features`), `logoutPath` (`/api/iam/logout`), `publicPaths`
+(`[/api/iam/login, /api/iam/callback]`, compared whole), `replayLimit` (B_replay, 1 MiB),
 `pollInterval` (P_inv, `1s`), `cookieName` (`be_session`).
 
 ## Tests

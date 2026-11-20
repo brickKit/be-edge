@@ -1,12 +1,12 @@
 # be-edge
 
-边缘的会话层（线协议 `be-protocol` 第 11 章 P11.1–P11.10）：Traefik 的 Yaegi 插件，核心以后也给别的边缘产品的旁挂外壳用。用法在 `README.md`；为什么这样设计在装配项目 be-assembly-standard 的 A118、A119、协议 20 的登录与会话、底层选择的边缘入口。
+边缘的会话层（线协议 `be-protocol` 第 11 章 P11.1–P11.13）：Traefik 的 Yaegi 插件，核心以后也给别的边缘产品的旁挂外壳用。用法在 `README.md`；为什么这样设计在装配项目 be-assembly-standard 的 A118、A119、协议 20 的登录与会话、底层选择的边缘入口。
 
 ## 代码地图
 
 | 文件 | 内容 |
 | --- | --- |
-| `edge.go` | 配置、`New`（Traefik 每个路由、每次重载都调一次）、处理器：剥掉浏览器的 `Authorization`、注入令牌、`BE-Request`、`TOKEN_STALE` 重放一次、登出、`features` |
+| `edge.go` | 配置、`New`（Traefik 每个路由、每次重载都调一次）、处理器：剥掉浏览器的 `Authorization`、注入令牌、`BE-Request`、`TOKEN_STALE` 重放一次、登出、`features`、答 `SESSION_ENDED` 时清 Cookie、登录与回调路径照公开路由 |
 | `interceptor.go` | 组件的回答直接写出，只有 401 先扣下，看是不是 `TOKEN_STALE` |
 | `sessions.go` | 按会话摘要的令牌缓存（包级变量，重载不丢）、同一会话同时只换取一次、已结束会话的轮询 |
 | `identity.go` | 身份成员的客户端：HTTP/2 上手写 gRPC 分帧、静态的 TLS 配置、证书文件变了就换传输 |

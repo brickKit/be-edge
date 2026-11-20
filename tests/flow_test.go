@@ -72,7 +72,7 @@ func newEdge(t *testing.T, w *sectest.World, addr string, next http.Handler, pol
 	return h
 }
 
-// The edge-flow vectors (P11.1-P11.4, P11.7) through the plugin's own entry, over gRPC and mTLS to a grpc-go
+// The edge-flow vectors (P11.1-P11.4, P11.7, P11.12, P11.13) through the plugin's own entry, over gRPC and mTLS to a grpc-go
 // SessionService: what the browser gets, how often the component and the identity member were called.
 func TestEdgeFlowVectors(t *testing.T) {
 	raw, err := fs.ReadFile(protocol.Vectors, "vectors/edge-flow.json")
@@ -82,16 +82,18 @@ func TestEdgeFlowVectors(t *testing.T) {
 			ID        string
 			Method    string
 			Cookie    bool
+			Public    bool
 			Headers   map[string]string
 			BodyBytes int `json:"body_bytes"`
 			Cache     string
 			Exchange  []string
 			Answers   []string
 			Expect    struct {
-				Browser   string
-				Forwarded int
-				Exchanges int
-				RenewIdle *bool `json:"renew_idle"`
+				Browser     string
+				Forwarded   int
+				Exchanges   int
+				RenewIdle   *bool `json:"renew_idle"`
+				ClearCookie bool  `json:"clear_cookie"`
 			}
 		}
 	}
@@ -125,7 +127,11 @@ func TestEdgeFlowVectors(t *testing.T) {
 		if c.BodyBytes > 0 {
 			body = strings.NewReader(strings.Repeat("x", c.BodyBytes))
 		}
-		req := httptest.NewRequest(c.Method, "/api/x", body)
+		path := "/api/x"
+		if c.Public {
+			path = map[bool]string{true: edge.DefaultCallbackPath, false: edge.DefaultLoginPath}[strings.Contains(c.ID, "callback")]
+		}
+		req := httptest.NewRequest(c.Method, path, body)
 		for k, val := range c.Headers {
 			req.Header.Set(k, val)
 		}
@@ -148,6 +154,7 @@ func TestEdgeFlowVectors(t *testing.T) {
 		assert.Equal(t, c.Expect.Browser, got, c.ID)
 		assert.Equal(t, c.Expect.Forwarded, len(comp.tokens), c.ID+": forwarded")
 		assert.Equal(t, c.Expect.Exchanges, exchanges, c.ID+": exchanges")
+		assert.Equal(t, c.Expect.ClearCookie, clears(resp.Result()), c.ID+": clear_cookie")
 		if c.Expect.RenewIdle != nil {
 			for _, r := range renews {
 				assert.Equal(t, *c.Expect.RenewIdle, r, c.ID+": renew_idle")
@@ -237,4 +244,14 @@ func TestARotatedCertificateIsUsed(t *testing.T) {
 	first, last := iam.serials[0], iam.serials[len(iam.serials)-1]
 	assert.NotEmpty(t, first)
 	assert.NotEqual(t, first, last, "the rotated certificate was presented")
+}
+
+// clears reports whether a response tells the browser to drop the session cookie (P11.12).
+func clears(r *http.Response) bool {
+	for _, c := range r.Cookies() {
+		if c.Name == "be_session" && c.Value == "" && c.MaxAge < 0 {
+			return true
+		}
+	}
+	return false
 }
